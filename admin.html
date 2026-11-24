@@ -57,6 +57,9 @@ textarea{min-height:84px;resize:vertical}
 #toast{position:fixed;left:50%;bottom:80px;transform:translateX(-50%);background:#1B1B1B;color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;display:none;z-index:9;max-width:90%}
 #pubmodal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:8;padding:16px}
 #pubmodal .box{background:#fff;border-radius:14px;padding:18px;max-width:420px;width:100%}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.chip{border:1px solid #1B2A4A;background:#fff;color:#1B2A4A;border-radius:99px;padding:5px 11px;font:inherit;font-size:13px;cursor:pointer;text-decoration:none}
+.chip.done{background:#E6F4EA;border-color:#2E7D4F;color:#2E7D4F}.chip:disabled{opacity:.35;cursor:not-allowed}
 .pubch{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #EEE;font-size:15px}
 .pubch input{width:20px;height:20px}.pubch .muted{margin-left:auto;font-size:12px}
 #modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:8;padding:16px}
@@ -115,7 +118,7 @@ code{background:#F1EEE6;padding:1px 5px;border-radius:4px;font-size:13px}
 <section id="v-drafts">
   <div class="card">
     <h2>만들어진 원고</h2>
-    <p class="d">'미리보기'로 블로그 원고·카드·캡션·스레드·쇼츠 대본을 모두 확인하고, '발행'을 누르면 연결된 채널(유튜브·인스타·스레드·블로거)에 그대로 게시합니다. 네이버 블로그는 메일의 원고를 붙여넣으세요.</p>
+    <p class="d">'미리보기'로 내용을 확인한 뒤, 채널 버튼을 누르면 <b>그 채널에만</b> 게시합니다(✓ = 게시됨, 흐린 버튼 = 연결 안 됨). 네이버 블로그는 '네이버 블로그 원고'를 열어 전체 복사 → 스마트에디터에 붙여넣으세요.</p>
     <div id="d-list" class="muted">연결 후 표시됩니다.</div>
     <div class="bar"><button class="btn small ghost" id="d-refresh">새로고침</button></div>
   </div>
@@ -468,19 +471,28 @@ code{background:#F1EEE6;padding:1px 5px;border-radius:4px;font-size:13px}
     if (!cfg.token) return;
     try { let items = [];
       try { items = JSON.parse((await readFile("drafts/index.json")).text); } catch (e) { if (!/404/.test(e.message)) throw e; }
-      DRAFTS = items;
+      DRAFTS = items; const ST = await chStatus();
       if (!items.length) { $("d-list").textContent = "아직 보관된 원고가 없습니다. 다음 실행부터 여기에 쌓입니다."; return; }
       $("d-list").innerHTML = items.map((d) => {
         const st = (d.status || "").startsWith("발행 일부") ? "발행" : d.status;
-        const pub = Object.entries(d.published || {}).map(([k, v]) => `${esc(k)}: ${esc(String(v).slice(0, 60))}`).join("<br>");
+        const errs = Object.entries(d.published || {}).filter(([, v]) => String(v).startsWith("ERROR"))
+          .map(([k, v]) => `${esc((PUB_CH.find((c) => c[0] === k) || [k, k])[1])} 실패: ${esc(String(v).slice(6, 90))}`).join("<br>");
+        const pub = errs;
         const canPub = d.storable && d.status !== "보류";
+        const chips = canPub ? `<div class="chips">` +
+          (d.naver ? `<a class="chip" href="${esc(d.naver)}" target="_blank" rel="noopener">📝 네이버 블로그 원고</a>` : "") +
+          PUB_CH.map(([k, label, sk]) => { const v = String((d.published || {})[k] || ""); const done = v && !/^(ERROR|건너뜀)/.test(v);
+            const off = ST[sk] && !ST[sk].ok;
+            return `<button class="chip${done ? " done" : ""}" data-one="${esc(d.id)}" data-ch="${k}" ${off ? "disabled title='연결 안 됨'" : ""}>${done ? "✓ " : ""}${label}</button>`; }).join("") +
+          `</div>` : "";
         return `<div class="draft">${d.cover ? `<img src="${esc(d.cover)}" alt="" loading="lazy">` : "<div></div>"}
           <div><div><span class="tag s-${esc(st)}">${esc(d.status)}</span><span class="muted">${esc(d.created)} · ${esc(d.series)}</span></div>
           <h3>${esc(d.title)}</h3>
           ${(d.issues || []).length ? `<div class="muted" style="color:#B3261E">${d.issues.map(esc).join("<br>")}</div>` : ""}
           ${pub ? `<div class="muted">${pub}</div>` : ""}
+          ${chips}
           <div class="bar" style="margin-top:8px">
-            ${canPub ? `<button class="btn small gold" data-pub="${esc(d.id)}">${d.status === "발행됨" || d.status.startsWith("발행 일부") ? "추가·다시 발행" : "발행"}</button>` : ""}
+            ${canPub ? `<button class="btn small gold" data-pub="${esc(d.id)}">${d.status === "발행됨" || d.status.startsWith("발행 일부") ? "여러 채널 한 번에" : "전체·여러 채널 발행"}</button>` : ""}
             ${d.preview ? `<a class="btn small ghost" href="${esc(d.preview)}" target="_blank" rel="noopener">미리보기</a>` : ""}
             ${d.video ? `<a class="btn small ghost" href="${esc(d.video)}" target="_blank" rel="noopener">영상 보기</a>` : ""}</div></div></div>`; }).join("");
     } catch (e) { $("d-list").textContent = "불러오기 실패: " + e.message; }
@@ -503,6 +515,14 @@ code{background:#F1EEE6;padding:1px 5px;border-radius:4px;font-size:13px}
     $("pub-sel").onclick = () => { const v = [...document.querySelectorAll("#pub-list input:checked")].map((i) => i.value);
       if (!v.length) { toast("채널을 하나 이상 고르세요"); return; } close(v); };
     $("pubmodal").style.display = "flex"; }); }
+  $("d-list").addEventListener("click", async (e) => { const c = e.target.closest("[data-one]"); if (!c) return;
+    const d = DRAFTS.find((x) => x.id === c.dataset.one) || { title: "" }; const label = PUB_CH.find((x) => x[0] === c.dataset.ch)[1];
+    const again = c.classList.contains("done");
+    if (!(await ask(`${label}에만 게시합니다.\n「${d.title}」${again ? "\n이미 게시한 채널이라 같은 글이 한 번 더 올라갑니다." : ""}\n대외에 공개되는 글입니다. 진행할까요?`))) return;
+    c.disabled = true;
+    try { await gh(`/actions/workflows/${WF}/dispatches`, { method: "POST", body: JSON.stringify({ ref: "main", inputs: { publish_id: c.dataset.one, channels: c.dataset.ch, topic: "", mode: "auto" } }) });
+      toast(`${label} 발행을 시작했습니다. 2~4분 뒤 ✓ 표시가 붙습니다.`, 4000); setTimeout(loadDrafts, 150000); }
+    catch (err) { toast("발행 실패: " + err.message, 5000); c.disabled = false; } });
   $("d-list").addEventListener("click", async (e) => { const b = e.target.closest("[data-pub]"); if (!b) return;
     const d = DRAFTS.find((x) => x.id === b.dataset.pub) || { id: b.dataset.pub, title: "" };
     const chosen = await pickChannels(d, await chStatus()); if (!chosen || !chosen.length) return;
