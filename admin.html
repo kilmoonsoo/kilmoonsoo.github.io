@@ -52,7 +52,7 @@ textarea{min-height:84px;resize:vertical}
 .draft h3{font-size:15px;margin:2px 0 4px;line-height:1.4}
 .tag{display:inline-block;font-size:12px;padding:1px 7px;border-radius:99px;font-weight:700;margin-right:4px}
 .tag.s-초안{background:#EEF1F6;color:#1B2A4A}.tag.s-보류{background:#FDECEA;color:#B3261E}
-.tag.s-발행됨{background:#E6F4EA;color:#2E7D4F}.tag.s-발행{background:#FFF4D6;color:#8A6D00}
+.tag.s-social{background:#FFF0E6;color:#B4501E}.tag.s-발행됨{background:#E6F4EA;color:#2E7D4F}.tag.s-발행{background:#FFF4D6;color:#8A6D00}
 .pill{display:inline-block;font-size:12px;padding:2px 8px;border-radius:99px;background:#EEF1F6;color:var(--navy);font-weight:700}
 #toast{position:fixed;left:50%;bottom:80px;transform:translateX(-50%);background:#1B1B1B;color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;display:none;z-index:9;max-width:90%}
 #pubmodal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:8;padding:16px}
@@ -93,6 +93,21 @@ code{background:#F1EEE6;padding:1px 5px;border-radius:4px;font-size:13px}
     <p class="d">주제를 비우면 오늘 요일 계획대로 만듭니다. 결과는 메일로 옵니다(3~6분).</p>
     <label>주제 (선택)</label>
     <input id="run-topic" placeholder="예: 봉천동 반지하 원룸 계약 전 체크할 것">
+    <label>만들 묶음</label>
+    <select id="run-set">
+      <option value="full">전체 (블로그·카드뉴스·쇼츠·릴스·스레드)</option>
+      <option value="social">🎬 릴스·스레드만 (빠르고 저렴, 블로그 없음)</option>
+    </select>
+    <div id="run-style-box" style="display:none">
+      <label>스레드 형식</label>
+      <select id="run-style">
+        <option value="">설정값 그대로</option>
+        <option value="series">연속 글 (첫 글 + 답글로 하나씩)</option>
+        <option value="single">한 글로 끝내기</option>
+        <option value="question">질문형 (질문 → 답글로 정답)</option>
+      </select>
+      <p class="d">주제를 비우면 오늘 저녁 연재 순서대로 만듭니다. 매일 19:07에도 자동으로 만들어집니다.</p>
+    </div>
     <label>방식</label>
     <select id="run-mode">
       <option value="draft">초안만 (발행 안 함)</option>
@@ -425,11 +440,14 @@ code{background:#F1EEE6;padding:1px 5px;border-radius:4px;font-size:13px}
     const mode = $("run-mode").value;
     if (mode === "auto" && !(await ask("검사를 통과하면 연결된 채널에 바로 게시됩니다. 진행할까요?"))) return;
     $("run-btn").disabled = true;
+    const inputs = { topic: $("run-topic").value.trim(), mode };
+    if ($("run-set").value === "social") { inputs.set = "social"; inputs.threads_style = $("run-style").value; }
     try { await gh(`/actions/workflows/${WF}/dispatches`, { method: "POST",
-        body: JSON.stringify({ ref: "main", inputs: { topic: $("run-topic").value.trim(), mode } }) });
+        body: JSON.stringify({ ref: "main", inputs }) });
       toast("시작했습니다. 3~6분 뒤 메일을 확인하세요."); $("run-topic").value = ""; setTimeout(loadRuns, 4000); }
     catch (e) { toast("실행 실패: " + e.message, 5000); } finally { $("run-btn").disabled = false; }
   };
+  $("run-set").onchange = () => { $("run-style-box").style.display = $("run-set").value === "social" ? "" : "none"; };
   async function loadSched() {
     try { const w = await gh(`/actions/workflows/${WF}`);
       $("sched-state").innerHTML = w.state === "active" ? '<span class="st ok">켜져 있음</span>' : '<span class="st bad">꺼져 있음</span>'; }
@@ -486,7 +504,7 @@ code{background:#F1EEE6;padding:1px 5px;border-radius:4px;font-size:13px}
             return `<button class="chip${done ? " done" : ""}" data-one="${esc(d.id)}" data-ch="${k}" ${off ? "disabled title='연결 안 됨'" : ""}>${done ? "✓ " : ""}${label}</button>`; }).join("") +
           `</div>` : "";
         return `<div class="draft">${d.cover ? `<img src="${esc(d.cover)}" alt="" loading="lazy">` : "<div></div>"}
-          <div><div><span class="tag s-${esc(st)}">${esc(d.status)}</span><span class="muted">${esc(d.created)} · ${esc(d.series)}</span></div>
+          <div><div><span class="tag s-${esc(st)}">${esc(d.status)}</span>${d.set === "social" ? '<span class="tag s-social">🎬 릴스·스레드</span>' : ""}<span class="muted">${esc(d.created)} · ${esc(d.series)}</span></div>
           <h3>${esc(d.title)}</h3>
           ${(d.issues || []).length ? `<div class="muted" style="color:#B3261E">${d.issues.map(esc).join("<br>")}</div>` : ""}
           ${pub ? `<div class="muted">${pub}</div>` : ""}
@@ -494,7 +512,8 @@ code{background:#F1EEE6;padding:1px 5px;border-radius:4px;font-size:13px}
           <div class="bar" style="margin-top:8px">
             ${canPub ? `<button class="btn small gold" data-pub="${esc(d.id)}">${d.status === "발행됨" || d.status.startsWith("발행 일부") ? "여러 채널 한 번에" : "전체·여러 채널 발행"}</button>` : ""}
             ${d.preview ? `<a class="btn small ghost" href="${esc(d.preview)}" target="_blank" rel="noopener">미리보기</a>` : ""}
-            ${d.video ? `<a class="btn small ghost" href="${esc(d.video)}" target="_blank" rel="noopener">영상 보기</a>` : ""}</div></div></div>`; }).join("");
+            ${d.video ? `<a class="btn small ghost" href="${esc(d.video)}" target="_blank" rel="noopener">영상 보기</a>` : ""}
+            ${d.storable && d.set !== "social" ? `<button class="btn small ghost" data-social="${esc(d.id)}">🎬 릴스·스레드로 재가공</button>` : ""}</div></div></div>`; }).join("");
     } catch (e) { $("d-list").textContent = "불러오기 실패: " + e.message; }
   }
   $("d-refresh").onclick = loadDrafts;
@@ -532,6 +551,15 @@ code{background:#F1EEE6;padding:1px 5px;border-radius:4px;font-size:13px}
     try { await gh(`/actions/workflows/${WF}/dispatches`, { method: "POST", body: JSON.stringify({ ref: "main", inputs: { publish_id: d.id, channels: chosen.join(","), topic: "", mode: "auto" } }) });
       toast("발행을 시작했습니다. 2~4분 뒤 결과가 이 목록(과 알림)에 표시됩니다.", 4000); setTimeout(loadDrafts, 150000); }
     catch (err) { toast("발행 실패: " + err.message, 5000); b.disabled = false; } });
+
+  $("d-list").addEventListener("click", async (e) => { const b = e.target.closest("[data-social]"); if (!b) return;
+    const d = DRAFTS.find((x) => x.id === b.dataset.social) || { title: "" };
+    if (!(await ask(`「${d.title}」 원고를 릴스·스레드 전용으로 다시 만듭니다(초안, 발행 안 함). 진행할까요?`))) return;
+    b.disabled = true;
+    try { await gh(`/actions/workflows/${WF}/dispatches`, { method: "POST", body: JSON.stringify({ ref: "main",
+        inputs: { set: "social", source_id: d.id, topic: "", mode: "draft" } }) });
+      toast("재가공을 시작했습니다. 3~5분 뒤 이 목록에 🎬 원고가 생깁니다.", 4000); setTimeout(loadDrafts, 200000); }
+    catch (err) { toast("실행 실패: " + err.message, 5000); b.disabled = false; } });
 
   // ── 매물 ───────────────────────────────────
   async function loadListings() {
