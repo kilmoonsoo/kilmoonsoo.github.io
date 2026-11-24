@@ -194,6 +194,12 @@ code{background:#F1EEE6;padding:1px 5px;border-radius:4px;font-size:13px}
 <!-- 채널·설정 -->
 <section id="v-settings">
   <div class="card">
+    <h2>채널 연결 상태</h2>
+    <p class="d">게시하지 않고 각 채널 토큰이 살아 있는지만 확인합니다(1~2분).</p>
+    <div id="ck-list" class="muted">아직 확인한 기록이 없습니다.</div>
+    <div class="bar"><button class="btn small gold" id="ck-run">연결 확인</button><button class="btn small ghost" id="ck-reload">결과 새로고침</button></div>
+  </div>
+  <div class="card">
     <h2>발행 채널</h2>
     <div id="channels"></div>
   </div>
@@ -295,7 +301,7 @@ code{background:#F1EEE6;padding:1px 5px;border-radius:4px;font-size:13px}
   $("tabs").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return;
     document.querySelectorAll("#tabs button").forEach((x) => x.classList.toggle("on", x === b));
     document.querySelectorAll("section").forEach((s) => s.classList.toggle("on", s.id === "v-" + b.dataset.v));
-    if (b.dataset.v === "listings") loadListings(); if (b.dataset.v === "home") loadRuns(); if (b.dataset.v === "drafts") loadDrafts(); });
+    if (b.dataset.v === "listings") loadListings(); if (b.dataset.v === "home") loadRuns(); if (b.dataset.v === "drafts") loadDrafts(); if (b.dataset.v === "settings") loadCheck(); });
 
   const markDirty = () => { dirty = true; $("savebar").classList.add("on"); };
   document.querySelector("main").addEventListener("input", (e) => {
@@ -431,6 +437,21 @@ code{background:#F1EEE6;padding:1px 5px;border-radius:4px;font-size:13px}
     loadSched();
   }
   $("runs-refresh").onclick = loadRuns;
+
+  // ── 연결 확인 ─────────────────────────────
+  const CH_NAME = { instagram: "인스타그램", threads: "스레드", youtube_shorts: "유튜브 쇼츠", blogger: "블로거", media: "미디어 저장(R2)" };
+  async function loadCheck() {
+    if (!cfg.token) return;
+    try { const st = JSON.parse((await readFile("drafts/status.json")).text);
+      $("ck-list").innerHTML = `<div class="muted">확인 시각 ${esc(st.checked)}</div>` + Object.entries(st.channels).map(([k, v]) =>
+        `<div style="padding:6px 0">${v.ok ? "✅" : "⚠️"} <b>${esc(CH_NAME[k] || k)}</b> — ${esc(v.msg)}</div>`).join("");
+    } catch (e) { if (!/404/.test(e.message)) $("ck-list").textContent = "불러오기 실패: " + e.message; }
+  }
+  $("ck-reload").onclick = loadCheck;
+  $("ck-run").onclick = async () => { $("ck-run").disabled = true;
+    try { await gh(`/actions/workflows/${WF}/dispatches`, { method: "POST", body: JSON.stringify({ ref: "main", inputs: { publish_id: "check", topic: "", mode: "draft" } }) });
+      toast("연결 확인을 시작했습니다. 1~2분 뒤 '결과 새로고침'을 누르세요.", 4000); setTimeout(loadCheck, 90000); }
+    catch (e) { toast("실행 실패: " + e.message, 5000); } finally { setTimeout(() => ($("ck-run").disabled = false), 5000); } };
 
   // ── 원고 ───────────────────────────────────
   async function loadDrafts() {
