@@ -103,7 +103,7 @@ code{background:#F1EEE6;padding:1px 5px;border-radius:4px;font-size:13px}
 <section id="v-plan">
   <div class="card">
     <h2>요일별 콘텐츠 계획</h2>
-    <p class="d">연재: 아래 '연재·원칙' 탭의 연재 중 하나 / 뉴스: 관련 뉴스 해설(없으면 대체 연재) / 매물: 매물 탭에 등록한 매물(없으면 대체 연재)</p>
+    <p class="d">요일마다 종류·주제·쓰는 방식을 정합니다. 연재: '연재·원칙' 탭의 연재 / 뉴스: 관련 뉴스 해설(없으면 대체 연재) / 매물: 매물 탭의 매물(없으면 대체 연재). 이미 쓴 지정 주제는 자동으로 건너뜁니다.</p>
     <div id="days"></div>
   </div>
 </section>
@@ -243,6 +243,7 @@ code{background:#F1EEE6;padding:1px 5px;border-radius:4px;font-size:13px}
   const CH = [["naver_blog","네이버 블로그 원고(메일)"],["blogger","구글 블로거 자동 게시"],["instagram","인스타그램"],["threads","스레드"],["youtube_shorts","유튜브 쇼츠"]];
   const LKEYS = ["location","type","deal_type","price","area_m2","direction","floor","total_floors","rooms","bathrooms","approval_date","move_in_date","parking","maintenance_fee"];
   const WF = "autopost.yml";
+  const STYLE_OPTS = [["", "자동 (AI가 판단)"], ["checklist", "체크리스트형"], ["qa", "Q&A형"], ["story", "사례 이야기형"], ["compare", "비교표형"], ["steps", "단계별 가이드형"]];
   let S = null, sha = null, dirty = false;
   let cfg = { owner: "kilmoonsoo", repo: "autopost", token: "" };
 
@@ -294,7 +295,12 @@ code{background:#F1EEE6;padding:1px 5px;border-radius:4px;font-size:13px}
           <option value="news" ${d.type === "news" ? "selected" : ""}>뉴스 해설</option>
           <option value="listing" ${d.type === "listing" ? "selected" : ""}>매물</option></select>
         <label>${d.type === "series" ? "연재" : "쓸 게 없을 때 대체 연재"}</label>
-        <select class="d-series">${opts(d.type === "series" ? d.series : d.fallback)}</select></div>`; }).join("");
+        <select class="d-series">${opts(d.type === "series" ? d.series : d.fallback)}</select>
+        <label>지정 주제 <span class="muted">(한 줄에 하나, 위에서부터 차례로 사용 · 비우면 AI가 연재에서 고름)</span></label>
+        <textarea class="d-topics" placeholder="예)\n전세사기 예방 5단계\n월세 세액공제 받는 법">${esc((d.topics || []).join("\n"))}</textarea>
+        <div class="row"><div><label>쓰는 방식</label><select class="d-style">${STYLE_OPTS.map(([v, t]) =>
+          `<option value="${v}" ${v === (d.style || "") ? "selected" : ""}>${t}</option>`).join("")}</select></div>
+        <div><label>추가 지시</label><input class="d-inst" value="${esc(d.instruction || "")}" placeholder="예: 초보 세입자 눈높이로"></div></div></div>`; }).join("");
   }
   function renderSeries() {
     $("series-list").innerHTML = Object.entries(S.series || {}).map(([n, d], i) => `<div class="day" data-i="${i}">
@@ -325,8 +331,10 @@ code{background:#F1EEE6;padding:1px 5px;border-radius:4px;font-size:13px}
     const schedule = {};
     document.querySelectorAll("#days .day").forEach((el) => { const t = el.querySelector(".d-type").value, s = el.querySelector(".d-series").value;
       const old = S.schedule[el.dataset.k] || {};
-      schedule[el.dataset.k] = t === "series" ? { type: "series", series: s }
-        : { type: t, label: old.type === t && old.label ? old.label : (t === "news" ? "부동산 뉴스 해설" : "이번 주 추천 매물"), fallback: s }; });
+      const extra = { topics: el.querySelector(".d-topics").value.split("\n").map((x) => x.trim()).filter(Boolean),
+        style: el.querySelector(".d-style").value, instruction: el.querySelector(".d-inst").value.trim() };
+      schedule[el.dataset.k] = t === "series" ? { type: "series", series: s, ...extra }
+        : { type: t, label: old.type === t && old.label ? old.label : (t === "news" ? "부동산 뉴스 해설" : "이번 주 추천 매물"), fallback: s, ...extra }; });
     const principles = [...document.querySelectorAll(".r-text")].map((t) => t.value.trim()).filter(Boolean);
     const channels = { ...S.channels }; document.querySelectorAll("[data-ch]").forEach((c) => channels[c.dataset.ch] = c.checked);
     return { ...S,
