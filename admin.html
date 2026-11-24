@@ -55,6 +55,10 @@ textarea{min-height:84px;resize:vertical}
 .tag.s-발행됨{background:#E6F4EA;color:#2E7D4F}.tag.s-발행{background:#FFF4D6;color:#8A6D00}
 .pill{display:inline-block;font-size:12px;padding:2px 8px;border-radius:99px;background:#EEF1F6;color:var(--navy);font-weight:700}
 #toast{position:fixed;left:50%;bottom:80px;transform:translateX(-50%);background:#1B1B1B;color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;display:none;z-index:9;max-width:90%}
+#pubmodal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:8;padding:16px}
+#pubmodal .box{background:#fff;border-radius:14px;padding:18px;max-width:420px;width:100%}
+.pubch{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #EEE;font-size:15px}
+.pubch input{width:20px;height:20px}.pubch .muted{margin-left:auto;font-size:12px}
 #modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:8;padding:16px}
 #modal .box{background:#fff;border-radius:14px;padding:18px;max-width:420px;width:100%}
 .muted{color:var(--muted);font-size:13px}
@@ -256,7 +260,13 @@ code{background:#F1EEE6;padding:1px 5px;border-radius:4px;font-size:13px}
 <div class="savebar" id="savebar"><span class="muted" style="align-self:center">바뀐 내용이 있습니다</span>
   <button class="btn ghost small" id="discard">되돌리기</button><button class="btn gold" id="save">저장</button></div>
 <div id="toast"></div>
-<div id="modal"><div class="box"><p id="modal-msg" style="margin-top:0"></p>
+<div id="pubmodal"><div class="box">
+  <h3 style="margin:0 0 4px">발행할 채널 선택</h3><p class="muted" id="pub-title" style="margin:0 0 8px"></p>
+  <div id="pub-list"></div>
+  <p class="muted" style="font-size:12px">이미 게시한 채널을 다시 고르면 같은 글이 한 번 더 올라갑니다.</p>
+  <div class="bar" style="justify-content:flex-end;flex-wrap:wrap"><button class="btn ghost small" id="pub-no">취소</button>
+    <button class="btn small ghost" id="pub-sel">선택 발행</button><button class="btn small gold" id="pub-all">전체 발행</button></div></div></div>
+<div id="modal"><div class="box"><p id="modal-msg" style="margin-top:0;white-space:pre-line"></p>
   <div class="bar" style="justify-content:flex-end"><button class="btn ghost small" id="modal-no">취소</button><button class="btn small" id="modal-yes">확인</button></div></div></div>
 
 <script>
@@ -458,6 +468,7 @@ code{background:#F1EEE6;padding:1px 5px;border-radius:4px;font-size:13px}
     if (!cfg.token) return;
     try { let items = [];
       try { items = JSON.parse((await readFile("drafts/index.json")).text); } catch (e) { if (!/404/.test(e.message)) throw e; }
+      DRAFTS = items;
       if (!items.length) { $("d-list").textContent = "아직 보관된 원고가 없습니다. 다음 실행부터 여기에 쌓입니다."; return; }
       $("d-list").innerHTML = items.map((d) => {
         const st = (d.status || "").startsWith("발행 일부") ? "발행" : d.status;
@@ -469,18 +480,37 @@ code{background:#F1EEE6;padding:1px 5px;border-radius:4px;font-size:13px}
           ${(d.issues || []).length ? `<div class="muted" style="color:#B3261E">${d.issues.map(esc).join("<br>")}</div>` : ""}
           ${pub ? `<div class="muted">${pub}</div>` : ""}
           <div class="bar" style="margin-top:8px">
-            ${canPub ? `<button class="btn small gold" data-pub="${esc(d.id)}">${d.status === "발행됨" ? "다시 발행" : "발행"}</button>` : ""}
+            ${canPub ? `<button class="btn small gold" data-pub="${esc(d.id)}">${d.status === "발행됨" || d.status.startsWith("발행 일부") ? "추가·다시 발행" : "발행"}</button>` : ""}
             ${d.preview ? `<a class="btn small ghost" href="${esc(d.preview)}" target="_blank" rel="noopener">미리보기</a>` : ""}
             ${d.video ? `<a class="btn small ghost" href="${esc(d.video)}" target="_blank" rel="noopener">영상 보기</a>` : ""}</div></div></div>`; }).join("");
     } catch (e) { $("d-list").textContent = "불러오기 실패: " + e.message; }
   }
   $("d-refresh").onclick = loadDrafts;
+  const PUB_CH = [["instagram_carousel", "인스타 카드뉴스", "instagram"], ["instagram_reel", "인스타 릴스", "instagram"],
+    ["threads", "스레드", "threads"], ["youtube_shorts", "유튜브 쇼츠", "youtube_shorts"], ["blogger", "구글 블로거", "blogger"]];
+  let DRAFTS = [];
+  async function chStatus() { try { return JSON.parse((await readFile("drafts/status.json")).text).channels || {}; } catch { return {}; } }
+  function pickChannels(d, st) { return new Promise((res) => {
+    const pub = d.published || {};
+    $("pub-title").textContent = d.title;
+    $("pub-list").innerHTML = PUB_CH.map(([k, label, sk]) => {
+      const conn = st[sk] ? st[sk].ok : true; const done = pub[k] && !/^(ERROR|건너뜀)/.test(pub[k]);
+      const note = !conn ? "연결 안 됨" : done ? "게시됨" : (pub[k] || "").startsWith("ERROR") ? "지난번 실패" : "";
+      return `<label class="pubch"><input type="checkbox" value="${k}" ${conn && !done ? "checked" : ""} ${conn ? "" : "disabled"}>${label}<span class="muted">${note}</span></label>`; }).join("");
+    const close = (v) => { $("pubmodal").style.display = "none"; res(v); };
+    $("pub-no").onclick = () => close(null);
+    $("pub-all").onclick = () => close([...document.querySelectorAll("#pub-list input:not(:disabled)")].map((i) => i.value));
+    $("pub-sel").onclick = () => { const v = [...document.querySelectorAll("#pub-list input:checked")].map((i) => i.value);
+      if (!v.length) { toast("채널을 하나 이상 고르세요"); return; } close(v); };
+    $("pubmodal").style.display = "flex"; }); }
   $("d-list").addEventListener("click", async (e) => { const b = e.target.closest("[data-pub]"); if (!b) return;
-    const again = b.textContent.includes("다시");
-    if (!(await ask(again ? "이미 발행한 원고입니다. 같은 내용을 한 번 더 게시할까요? (중복 게시 주의)" : "이 원고를 연결된 채널에 게시할까요?"))) return;
+    const d = DRAFTS.find((x) => x.id === b.dataset.pub) || { id: b.dataset.pub, title: "" };
+    const chosen = await pickChannels(d, await chStatus()); if (!chosen || !chosen.length) return;
+    const names = chosen.map((k) => PUB_CH.find((c) => c[0] === k)[1]).join(", ");
+    if (!(await ask(`다음 채널에 게시합니다: ${names}\n대외에 공개되는 글입니다. 진행할까요?`))) return;
     b.disabled = true;
-    try { await gh(`/actions/workflows/${WF}/dispatches`, { method: "POST", body: JSON.stringify({ ref: "main", inputs: { publish_id: b.dataset.pub, topic: "", mode: "auto" } }) });
-      toast("발행을 시작했습니다. 2~4분 뒤 결과가 메일과 이 목록에 표시됩니다.", 4000); setTimeout(loadDrafts, 120000); }
+    try { await gh(`/actions/workflows/${WF}/dispatches`, { method: "POST", body: JSON.stringify({ ref: "main", inputs: { publish_id: d.id, channels: chosen.join(","), topic: "", mode: "auto" } }) });
+      toast("발행을 시작했습니다. 2~4분 뒤 결과가 이 목록(과 알림)에 표시됩니다.", 4000); setTimeout(loadDrafts, 150000); }
     catch (err) { toast("발행 실패: " + err.message, 5000); b.disabled = false; } });
 
   // ── 매물 ───────────────────────────────────
