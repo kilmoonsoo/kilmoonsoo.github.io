@@ -55,6 +55,13 @@ textarea{min-height:84px;resize:vertical}
 .tag.s-social{background:#FFF0E6;color:#B4501E}.tag.s-발행됨{background:#E6F4EA;color:#2E7D4F}.tag.s-발행{background:#FFF4D6;color:#8A6D00}
 .pill{display:inline-block;font-size:12px;padding:2px 8px;border-radius:99px;background:#EEF1F6;color:var(--navy);font-weight:700}
 #toast{position:fixed;left:50%;bottom:80px;transform:translateX(-50%);background:#1B1B1B;color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;display:none;z-index:9;max-width:90%}
+.ovl{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:flex-start;justify-content:center;z-index:9;padding:16px;overflow-y:auto}
+.ovl .box{background:#fff;border-radius:14px;padding:18px;max-width:480px;width:100%;margin:auto}
+.sc-list{max-height:220px;overflow-y:auto;border:1px solid #E4E0D6;border-radius:8px;padding:4px 10px;margin:4px 0 8px;font-size:13px}
+.sc-list div{display:flex;gap:10px;padding:4px 0;border-bottom:1px dashed #EEE}.sc-list div:last-child{border:0}
+.sc-list b{flex:0 0 auto;color:#1B2A4A}.sc-list span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.qrow{display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid #EEE;font-size:14px}.qrow:last-child{border:0}
+.qrow .qt{flex:0 0 auto;font-weight:700;color:#1B2A4A}.qrow .qm{flex:1;min-width:0}.qrow .qm small{display:block;color:#6B6B6B}
 #pickmodal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:flex-start;justify-content:center;z-index:8;padding:16px;overflow-y:auto}
 #pickmodal .box{background:#fff;border-radius:14px;padding:18px;max-width:560px;width:100%;margin:auto}
 .pk-sec{border:1px solid #E4E0D6;border-radius:10px;padding:10px 12px;margin:10px 0}
@@ -68,11 +75,16 @@ textarea{min-height:84px;resize:vertical}
 .pk-th label{display:flex;gap:8px;align-items:flex-start;padding:7px 0;border-bottom:1px dashed #E4E0D6;font-size:14px;cursor:pointer}
 .pk-th label:last-child{border:0}.pk-th input{width:18px;height:18px;margin-top:3px;flex:0 0 18px}
 .pk-th .txt{white-space:pre-wrap;min-width:0}
+.wasb{font-style:normal;background:#E6F4EA;color:#2E7D4F;border-radius:6px;font-size:11px;font-weight:700;padding:1px 6px}
+.pk-cards .wasb{position:absolute;top:6px;right:6px}.pk-th label.was .txt{color:#6B6B6B}
 .pk-row{display:flex;gap:14px;flex-wrap:wrap;margin-top:6px;font-size:14px}
 .pk-row label,.pk-head{display:flex!important;align-items:center;gap:6px;margin:0!important;font-size:14px}.pk-row input{width:18px;height:18px}
 .pk-dis{opacity:.4}
 #pubmodal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:8;padding:16px}
 #pubmodal .box{background:#fff;border-radius:14px;padding:18px;max-width:420px;width:100%}
+.fbar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:0 0 8px}
+.fbtn{border:1px solid #1B2A4A;background:#fff;color:#1B2A4A;border-radius:99px;padding:4px 12px;font:inherit;font-size:13px;cursor:pointer}
+.fbtn.on{background:#1B2A4A;color:#fff}
 .bulkbar{position:fixed;left:0;right:0;bottom:0;background:#1B2A4A;color:#fff;display:none;gap:8px;align-items:center;justify-content:center;padding:10px 12px;z-index:7;flex-wrap:wrap}
 .bulkbar.on{display:flex}.bulkbar .btn.ghost{background:transparent;color:#fff;border-color:#fff}
 .selall{display:flex;gap:6px;align-items:center;font-size:14px;cursor:pointer}.selall input,.dsel{width:20px;height:20px;accent-color:#C9A227}
@@ -111,8 +123,15 @@ code{background:#F1EEE6;padding:1px 5px;border-radius:4px;font-size:13px}
   <div class="card">
     <h2>최근 원고 · 바로 올리기</h2>
     <p class="d">원고마다 채널 버튼을 누르거나 🧩 골라서 올리기, 체크해서 일괄 발행할 수 있습니다. ✓ = 게시됨</p>
+    <div class="fbar"><button class="fbtn" data-f="all">전체</button><button class="fbtn" data-f="new">안 올린 원고만</button><button class="btn small ghost" data-selnew>안 올린 원고 모두 선택</button></div>
     <div id="h-drafts" class="muted">연결 후 표시됩니다.</div>
     <div class="bar"><button class="btn small ghost" id="h-refresh">새로고침</button><button class="btn small ghost" id="h-more">원고 전체 보기 →</button></div>
+  </div>
+  <div class="card">
+    <h2>⏰ 예약된 업로드</h2>
+    <p class="d">원고를 체크한 뒤 아래 바의 '예약 발행'으로 걸어 두면 시간 순서대로 하나씩 올라갑니다.</p>
+    <div id="q-list" class="muted">연결 후 표시됩니다.</div>
+    <div class="bar"><button class="btn small ghost" id="q-refresh">새로고침</button><button class="btn small ghost" id="q-now">지금 시간 된 것 바로 처리</button></div>
   </div>
   <div class="card">
     <h2>지금 만들기</h2>
@@ -160,7 +179,8 @@ code{background:#F1EEE6;padding:1px 5px;border-radius:4px;font-size:13px}
   <div class="card">
     <h2>만들어진 원고</h2>
     <p class="d">'미리보기'로 내용을 확인한 뒤, 채널 버튼을 누르면 <b>그 채널에만</b> 게시합니다(✓ = 게시됨, 흐린 버튼 = 연결 안 됨). 네이버 블로그는 '네이버 블로그 원고'를 열어 전체 복사 → 스마트에디터에 붙여넣으세요.</p>
-    <div class="bar" style="margin:0 0 6px"><label class="selall"><input type="checkbox" id="d-all"> 발행 가능한 원고 전체 선택</label></div>
+    <div class="fbar"><button class="fbtn" data-f="all">전체</button><button class="fbtn" data-f="new">안 올린 원고만</button><button class="btn small ghost" data-selnew>안 올린 원고 모두 선택</button></div>
+    <div class="bar" style="margin:0 0 6px"><label class="selall"><input type="checkbox" id="d-all"> 보이는 원고 전체 선택</label></div>
     <div id="d-list" class="muted">연결 후 표시됩니다.</div>
     <div class="bar"><button class="btn small ghost" id="d-refresh">새로고침</button></div>
   </div>
@@ -311,8 +331,18 @@ code{background:#F1EEE6;padding:1px 5px;border-radius:4px;font-size:13px}
   <button class="btn ghost small" id="discard">되돌리기</button><button class="btn gold" id="save">저장</button></div>
 <div id="toast"></div>
 <div class="bulkbar" id="bulkbar"><span id="bulk-n">0개 선택</span>
-  <button class="btn small ghost" id="bulk-clear">선택 해제</button><button class="btn small gold" id="bulk-pub">선택한 원고 일괄 발행</button>
+  <button class="btn small ghost" id="bulk-clear">선택 해제</button><button class="btn small gold" id="bulk-pub">지금 일괄 발행</button><button class="btn small gold" id="bulk-sched">⏰ 예약 발행</button>
 </div>
+<div id="schedmodal" class="ovl"><div class="box">
+  <h3 style="margin:0 0 2px">⏰ 예약 발행</h3><p class="muted" id="sc-sub" style="margin:0 0 8px"></p>
+  <label>첫 업로드 시각</label><input type="datetime-local" id="sc-start">
+  <div class="row"><div><label>간격</label><select id="sc-gap">
+    <option value="1">1시간마다</option><option value="2">2시간마다</option><option value="3">3시간마다</option><option value="4">4시간마다</option>
+    <option value="6">6시간마다</option><option value="12">12시간마다</option><option value="24" selected>하루에 1개</option><option value="48">이틀에 1개</option></select></div>
+  <div><label>순서</label><select id="sc-order"><option value="old">오래된 원고부터</option><option value="new">최신 원고부터</option></select></div></div>
+  <div class="muted" style="font-size:13px;margin-top:8px">예약 순서</div><div id="sc-list" class="sc-list"></div>
+  <p class="muted" style="font-size:12px">매시간 확인해서 시간이 된 것을 올립니다(실제 게시는 예약 시각보다 수십 분 늦을 수 있음). 원고마다 이미 올린 채널은 건너뜁니다.</p>
+  <div class="bar" style="justify-content:flex-end"><button class="btn ghost small" id="sc-no">취소</button><button class="btn small gold" id="sc-go">예약하기</button></div></div></div>
 <div id="pickmodal"><div class="box">
   <h3 style="margin:0 0 2px">골라서 올리기</h3><p class="muted" id="pk-title" style="margin:0 0 6px"></p>
   <div id="pk-body"></div>
@@ -369,7 +399,7 @@ code{background:#F1EEE6;padding:1px 5px;border-radius:4px;font-size:13px}
   $("tabs").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return;
     document.querySelectorAll("#tabs button").forEach((x) => x.classList.toggle("on", x === b));
     document.querySelectorAll("section").forEach((s) => s.classList.toggle("on", s.id === "v-" + b.dataset.v));
-    if (b.dataset.v === "listings") loadListings(); if (b.dataset.v === "home") { loadRuns(); loadDrafts(); } if (b.dataset.v === "drafts") loadDrafts(); if (b.dataset.v === "settings") loadCheck(); });
+    if (b.dataset.v === "listings") loadListings(); if (b.dataset.v === "home") { loadRuns(); loadDrafts(); loadQueue(); } if (b.dataset.v === "drafts") loadDrafts(); if (b.dataset.v === "settings") loadCheck(); });
 
   const markDirty = () => { dirty = true; $("savebar").classList.add("on"); };
   document.querySelector("main").addEventListener("input", (e) => {
@@ -563,12 +593,24 @@ code{background:#F1EEE6;padding:1px 5px;border-radius:4px;font-size:13px}
             ${d.preview ? `<a class="btn small ghost" href="${esc(d.preview)}" target="_blank" rel="noopener">미리보기</a>` : ""}
             ${d.video ? `<a class="btn small ghost" href="${esc(d.video)}" target="_blank" rel="noopener">영상 보기</a>` : ""}
             ${d.storable && d.set !== "social" ? `<button class="btn small ghost" data-social="${esc(d.id)}">🎬 릴스·스레드로 재가공</button>` : ""}</div></div></div>`; };
-      $("d-list").innerHTML = items.map(card).join("");
-      $("h-drafts").innerHTML = items.slice(0, 5).map(card).join("");
+      const shown = FILTER === "new" ? items.filter(isNew) : items;
+      const empty = `<div class="muted">${FILTER === "new" ? "안 올린 원고가 없습니다. 모두 게시됐어요." : "원고가 없습니다."}</div>`;
+      $("d-list").innerHTML = shown.map(card).join("") || empty;
+      $("h-drafts").innerHTML = shown.slice(0, 5).map(card).join("") || empty;
+      document.querySelectorAll(".fbtn").forEach((b) => b.classList.toggle("on", b.dataset.f === FILTER));
       bulkUpdate();
     } catch (e) { $("d-list").textContent = "불러오기 실패: " + e.message; }
   }
   $("d-refresh").onclick = loadDrafts;
+  // 안 올린 원고 = 발행 가능하고, 아직 어느 채널에도 게시되지 않은 원고
+  let FILTER = "all";
+  const posted = (d) => Object.entries(d.published || {}).some(([k, v]) => PUB_CH.some((c) => c[0] === k) && v && !/^(ERROR|건너뜀)/.test(String(v)));
+  const isNew = (d) => d.storable && d.status !== "보류" && !posted(d);
+  document.addEventListener("click", (e) => {
+    const f = e.target.closest(".fbtn"); if (f) { FILTER = f.dataset.f; loadDrafts(); return; }
+    if (e.target.closest("[data-selnew]")) { const n = DRAFTS.filter(isNew); n.forEach((d) => SEL.add(d.id)); bulkUpdate();
+      toast(n.length ? `안 올린 원고 ${n.length}개를 선택했습니다` : "안 올린 원고가 없습니다"); }
+  });
   const DL = (ev, fn) => ["d-list", "h-drafts"].forEach((id) => $(id).addEventListener(ev, fn));
   $("h-refresh").onclick = loadDrafts;
   $("h-more").onclick = () => document.querySelector('#tabs [data-v="drafts"]').click();
@@ -582,22 +624,80 @@ code{background:#F1EEE6;padding:1px 5px;border-radius:4px;font-size:13px}
     if (car && th && !th.disabled && src === car && car.checked) th.checked = true;
   }
 
+  // ── 예약 발행 ──
+  const QPATH = "drafts/queue.json", QWF = "queue.yml";
+  const pad = (n) => String(n).padStart(2, "0");
+  const localIso = (dt) => `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
+  const kstNow = () => new Date(Date.now() + (new Date().getTimezoneOffset() + 540) * 60000);   // 한국 시간 기준
+  const fmtAt = (iso) => { const [d, t] = iso.split("T"); const [, m, dd] = d.split("-"); const dw = "일월화수목금토"[new Date(d + "T00:00").getDay()]; return `${+m}/${+dd}(${dw}) ${t}`; };
+  const chNames = (c) => c.split(",").filter((x) => x && x !== "new").map((x) => { const k = x.split("@")[0].replace("~sep", ""); const f = PUB_CH.find((p) => p[0] === k); return f ? f[1] : k; }).join("·");
+  async function readQueue() { try { const f = await readFile(QPATH); return { q: JSON.parse(f.text), sha: f.sha }; }
+    catch (e) { if (/404/.test(e.message)) return { q: { items: [], done: [] }, sha: null }; throw e; } }
+  async function saveQueue(mutate, msg) {     // 동시에 바뀌었으면(409) 다시 읽어 한 번 더
+    for (let i = 0; i < 2; i++) { const { q, sha } = await readQueue(); q.items = q.items || []; q.done = q.done || []; mutate(q);
+      try { await writeFile(QPATH, JSON.stringify(q, null, 2) + "\n", msg, sha); return q; } catch (e) { if (i || !/409|422/.test(e.message)) throw e; } } }
+  async function loadQueue() {
+    if (!cfg.token) return;
+    try { const { q } = await readQueue(); const items = (q.items || []).slice().sort((a, b) => a.at.localeCompare(b.at));
+      const now = localIso(kstNow());
+      $("q-list").innerHTML = (items.length ? items.map((e) => `<div class="qrow"><span class="qt">${fmtAt(e.at)}</span><span class="qm">${esc(e.title || e.id)}<small>${esc(chNames(e.channels || ""))}${e.at <= now ? " · 곧 처리됨" : ""}</small></span><button class="btn small ghost" data-qdel="${esc(e.key)}">취소</button></div>`).join("")
+          : `<div class="muted">예약된 업로드가 없습니다.</div>`) +
+        ((q.done || []).length ? `<div class="muted" style="margin-top:10px;font-size:13px">최근 처리</div>` + q.done.slice(0, 5).map((e) =>
+          `<div class="qrow"><span class="qt" style="color:#6B6B6B">${esc(e.ran || "")}</span><span class="qm">${esc(e.title || e.id)}<small style="color:${/ERROR|실패/.test(e.result) ? "#B3261E" : "#2E7D4F"}">${esc(e.result || "")}</small></span></div>`).join("") : "");
+    } catch (e) { $("q-list").textContent = "불러오기 실패: " + e.message; }
+  }
+  $("q-refresh").onclick = loadQueue;
+  $("q-list").addEventListener("click", async (e) => { const b = e.target.closest("[data-qdel]"); if (!b) return;
+    if (!(await ask("이 예약을 취소할까요?"))) return; b.disabled = true;
+    try { await saveQueue((q) => { q.items = q.items.filter((x) => x.key !== b.dataset.qdel); }, "예약 취소"); toast("예약을 취소했습니다"); loadQueue(); }
+    catch (err) { toast("취소 실패: " + err.message, 4000); b.disabled = false; } });
+  $("q-now").onclick = async () => { try { await gh(`/actions/workflows/${QWF}/dispatches`, { method: "POST", body: JSON.stringify({ ref: "main" }) });
+    toast("시간이 된 예약을 지금 처리합니다. 몇 분 뒤 새로고침하세요.", 4000); setTimeout(() => { loadQueue(); loadDrafts(); }, 120000); } catch (e) { toast("실패: " + e.message, 4000); } };
+  function schedDialog(ids) { return new Promise((res) => {
+    const st = new Date(kstNow().getTime() + 3600000); st.setMinutes(0, 0, 0);
+    $("sc-start").value = localIso(st); $("sc-sub").textContent = `원고 ${ids.length}개를 순서대로 예약합니다.`;
+    const order = () => { const list = ids.map((id) => DRAFTS.find((d) => d.id === id) || { id, title: id, created: "" });
+      list.sort((a, b) => String(a.created).localeCompare(String(b.created))); return $("sc-order").value === "new" ? list.reverse() : list; };
+    const plan = () => { const base = new Date($("sc-start").value), gap = +$("sc-gap").value;
+      if (isNaN(base)) return []; return order().map((d, i) => ({ d, at: localIso(new Date(base.getTime() + i * gap * 3600000)) })); };
+    const draw = () => { $("sc-list").innerHTML = plan().map((p) => `<div><b>${fmtAt(p.at)}</b><span>${esc(p.d.title)}</span></div>`).join(""); };
+    ["sc-start", "sc-gap", "sc-order"].forEach((id) => ($(id).oninput = draw)); draw();
+    const close = (v) => { $("schedmodal").style.display = "none"; res(v); };
+    $("sc-no").onclick = () => close(null);
+    $("sc-go").onclick = () => { const p = plan(); if (!p.length) { toast("첫 업로드 시각을 넣어 주세요"); return; } close(p); };
+    $("schedmodal").style.display = "flex"; }); }
+  async function scheduleIds(ids) {
+    const chosen = await pickChannels({ title: `예약할 원고 ${ids.length}개 — 올릴 채널`, published: {} }, await chStatus()); if (!chosen || !chosen.length) return;
+    const p = await schedDialog(ids); if (!p) return;
+    const channels = chosen.join(",") + ",new";
+    if (!(await ask(`${p.length}건을 예약합니다 (${chNames(channels)}).\n${p.map((x) => fmtAt(x.at) + " · " + x.d.title).join("\n")}\n\n예약 시각이 되면 자동으로 대외 게시됩니다. 진행할까요?`))) return;
+    try { const stamp = Date.now().toString(36);
+      await saveQueue((q) => { p.forEach((x, i) => q.items.push({ key: `${stamp}-${i}`, id: x.d.id, title: x.d.title, channels, at: x.at })); }, `예약 ${p.length}건 추가`);
+      toast(`${p.length}건을 예약했습니다. 홈의 '예약된 업로드'에서 확인·취소할 수 있습니다.`, 4500); SEL.clear(); bulkUpdate(); loadQueue(); }
+    catch (e) { toast("예약 실패: " + e.message, 5000); } }
+
   // ── 골라서 올리기(콘텐츠 하나하나) ──
   function pickContent(d, st) { return new Promise((res) => {
     const pub = d.published || {}, conn = (sk) => !(st[sk] && !st[sk].ok);
     const done = (k) => { const v = String(pub[k] || ""); return v && !/^(ERROR|건너뜀)/.test(v) ? " · ✓ 게시됨" : ""; };
     const cards = d.cards || [], ths = d.threads || [];
+    // 이전에 올린 카드·글 번호: _items 기록 → 없으면 채널을 통째로 올렸는지로 판단
+    const postedSet = (ch, total) => { const it = pub["_items:" + ch];
+      if (it) return new Set(String(it).split(".").map(Number));
+      return done(ch) ? new Set(Array.from({ length: total }, (_, i) => i + 1)) : new Set(); };
+    const pc = postedSet("instagram_carousel", cards.length), pt = postedSet("threads", ths.length);
+    const allNew = (set, n) => set.size < n;   // 아직 안 올린 게 있으면 그것만 기본 선택
     const sec = (k, label, sk, inner) => `<div class="pk-sec ${conn(sk) ? "" : "pk-dis"}"><label class="pk-head"><input type="checkbox" data-pk="${k}" ${conn(sk) ? "" : "disabled"}>${label}<span class="muted" style="font-weight:400">${conn(sk) ? done(k) : " · 연결 안 됨"}</span></label>${inner || ""}</div>`;
     const need = !cards.length && !ths.length;
     $("pk-title").textContent = d.title;
     $("pk-body").innerHTML =
       (need ? `<div class="pk-sec">이 원고는 카드·스레드 목록 정보가 아직 없습니다. <button class="btn small ghost" id="pk-load">정보 불러오기</button><div class="muted" style="font-size:12px">1~2분 뒤 새로고침하면 카드·스레드를 하나씩 고를 수 있습니다. (채널 단위 선택은 지금도 가능)</div></div>` : "") +
       sec("instagram_carousel", "인스타 카드뉴스", "instagram", cards.length ? `<div class="pk-cards">${cards.map((u, i) =>
-        `<label><input type="checkbox" data-card="${i + 1}" checked><img src="${esc(u)}" alt="카드 ${i + 1}" loading="lazy"><span>${i + 1}</span></label>`).join("")}</div>
+        `<label class="${pc.has(i + 1) ? "was" : ""}"><input type="checkbox" data-card="${i + 1}" ${pc.has(i + 1) ? "" : "checked"}><img src="${esc(u)}" alt="카드 ${i + 1}" loading="lazy"><span>${pc.has(i + 1) ? "✓ " : ""}${i + 1}</span>${pc.has(i + 1) ? '<em class="wasb">게시됨</em>' : ""}</label>`).join("")}</div>
         <div class="muted" style="font-size:12px;margin-top:4px">2장 이상이면 캐러셀, 1장이면 단일 이미지 게시물</div>` : "") +
       sec("instagram_reel", "인스타 릴스", "instagram") +
       sec("threads", "스레드", "threads", ths.length ? `<div class="pk-th">${ths.map((t, i) =>
-        `<label><input type="checkbox" data-th="${i + 1}" checked><span class="txt"><b>${i + 1}.</b> ${esc(t)}</span></label>`).join("")}</div>
+        `<label class="${pt.has(i + 1) ? "was" : ""}"><input type="checkbox" data-th="${i + 1}" ${pt.has(i + 1) ? "" : "checked"}><span class="txt"><b>${i + 1}.</b> ${pt.has(i + 1) ? '<em class="wasb">✓ 게시됨</em> ' : ""}${esc(t)}</span></label>`).join("")}</div>
         <div class="pk-row"><label><input type="radio" name="pk-mode" value="chain" checked> 이어서(첫 글 + 답글)</label><label><input type="radio" name="pk-mode" value="sep"> 각각 따로 게시</label></div>` : "") +
       sec("blogger", "구글 블로거", "blogger") +
       sec("youtube_shorts", "유튜브 쇼츠", "youtube_shorts", `<div class="muted" style="font-size:12px">감사 전에는 비공개로 잠깁니다</div>`);
@@ -650,15 +750,16 @@ code{background:#F1EEE6;padding:1px 5px;border-radius:4px;font-size:13px}
     if (e.target.matches(".dsel")) { e.target.checked ? SEL.add(e.target.value) : SEL.delete(e.target.value); bulkUpdate(); }
     if (e.target.id === "d-all") { document.querySelectorAll("#d-list .dsel").forEach((b) => { b.checked = e.target.checked; b.checked ? SEL.add(b.value) : SEL.delete(b.value); }); bulkUpdate(); }
   });
+  $("bulk-sched").onclick = () => { const ids = [...SEL]; if (ids.length) scheduleIds(ids); };
   $("bulk-clear").onclick = () => { SEL.clear(); document.querySelectorAll(".dsel").forEach((b) => (b.checked = false)); bulkUpdate(); };
   $("bulk-pub").onclick = async () => {
     const ids = [...SEL]; if (!ids.length) return;
     const chosen = await pickChannels({ title: `선택한 원고 ${ids.length}개`, published: {} }, await chStatus()); if (!chosen || !chosen.length) return;
     const names = chosen.map((k) => PUB_CH.find((c) => c[0] === k)[1]).join(", ");
     const titles = ids.map((id) => "· " + ((DRAFTS.find((d) => d.id === id) || {}).title || id)).join("\n");
-    if (!(await ask(`원고 ${ids.length}개를 ${names}에 게시합니다.\n${titles}\n\n이미 게시한 채널에 다시 올리면 같은 글이 한 번 더 올라갑니다. 대외 공개되는 글입니다. 진행할까요?`))) return;
+    if (!(await ask(`원고 ${ids.length}개를 ${names}에 게시합니다.\n${titles}\n\n원고마다 이미 게시한 채널은 건너뜁니다(중복 게시 방지). 대외 공개되는 글입니다. 진행할까요?`))) return;
     $("bulk-pub").disabled = true;
-    try { await gh(`/actions/workflows/${WF}/dispatches`, { method: "POST", body: JSON.stringify({ ref: "main", inputs: { publish_id: ids.join(","), channels: chosen.join(","), topic: "", mode: "auto" } }) });
+    try { await gh(`/actions/workflows/${WF}/dispatches`, { method: "POST", body: JSON.stringify({ ref: "main", inputs: { publish_id: ids.join(","), channels: chosen.join(",") + ",new", topic: "", mode: "auto" } }) });
       toast(`원고 ${ids.length}개 일괄 발행을 시작했습니다. 원고당 2~4분, 끝나면 ✓ 표시가 붙습니다.`, 5000);
       SEL.clear(); bulkUpdate(); setTimeout(loadDrafts, 180000); }
     catch (err) { toast("발행 실패: " + err.message, 5000); } finally { $("bulk-pub").disabled = false; } };
@@ -672,7 +773,7 @@ code{background:#F1EEE6;padding:1px 5px;border-radius:4px;font-size:13px}
     $("pub-list").innerHTML = PUB_CH.map(([k, label, sk]) => {
       const conn = st[sk] ? st[sk].ok : true; const done = pub[k] && !/^(ERROR|건너뜀)/.test(pub[k]);
       const note = !conn ? "연결 안 됨" : done ? "게시됨" : (pub[k] || "").startsWith("ERROR") ? "지난번 실패" : "";
-      return `<label class="pubch"><input type="checkbox" value="${k}" ${conn && !done ? "checked" : ""} ${conn ? "" : "disabled"}>${label}<span class="muted">${note}</span></label>`; }).join("");
+      return `<label class="pubch"><input type="checkbox" value="${k}" ${conn && !done && k !== "youtube_shorts" ? "checked" : ""} ${conn ? "" : "disabled"}>${label}<span class="muted">${note}</span></label>`; }).join("");
     const close = (v) => { $("pubmodal").style.display = "none"; res(v); };
     $("pub-list").onchange = (e) => { if (e.target.value === "instagram_carousel") linkCheck($("pub-list"), e.target); };
     $("pub-no").onclick = () => close(null);
@@ -743,7 +844,7 @@ code{background:#F1EEE6;padding:1px 5px;border-radius:4px;font-size:13px}
   // ── 연결 ───────────────────────────────────
   async function connect() {
     $("conn").textContent = "연결 중…";
-    try { await loadSettings(); $("conn").textContent = "연결됨"; $("conn").style.background = "#E6F4EA"; $("conn").style.color = "#2E7D4F"; loadRuns(); loadDrafts(); return true; }
+    try { await loadSettings(); $("conn").textContent = "연결됨"; $("conn").style.background = "#E6F4EA"; $("conn").style.color = "#2E7D4F"; loadRuns(); loadDrafts(); loadQueue(); return true; }
     catch (e) { $("conn").textContent = "연결 안 됨"; toast("연결 실패: " + e.message, 5000); return false; }
   }
   $("c-save").onclick = async () => {
