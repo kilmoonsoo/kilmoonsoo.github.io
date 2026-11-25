@@ -55,6 +55,22 @@ textarea{min-height:84px;resize:vertical}
 .tag.s-social{background:#FFF0E6;color:#B4501E}.tag.s-발행됨{background:#E6F4EA;color:#2E7D4F}.tag.s-발행{background:#FFF4D6;color:#8A6D00}
 .pill{display:inline-block;font-size:12px;padding:2px 8px;border-radius:99px;background:#EEF1F6;color:var(--navy);font-weight:700}
 #toast{position:fixed;left:50%;bottom:80px;transform:translateX(-50%);background:#1B1B1B;color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;display:none;z-index:9;max-width:90%}
+#pickmodal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:flex-start;justify-content:center;z-index:8;padding:16px;overflow-y:auto}
+#pickmodal .box{background:#fff;border-radius:14px;padding:18px;max-width:560px;width:100%;margin:auto}
+.pk-sec{border:1px solid #E4E0D6;border-radius:10px;padding:10px 12px;margin:10px 0}
+.pk-head{display:flex;align-items:center;gap:8px;font-weight:700}.pk-head input{width:20px;height:20px}
+.pk-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:8px;margin-top:8px}
+.pk-cards label{position:relative;display:block;cursor:pointer;min-width:0}
+.pk-cards img{width:100%;aspect-ratio:4/5;object-fit:cover;border-radius:8px;border:3px solid transparent;display:block}
+.pk-cards input{position:absolute;top:6px;left:6px;width:20px;height:20px;accent-color:#C9A227}
+.pk-cards input:checked+img{border-color:#C9A227}.pk-cards input:not(:checked)+img{opacity:.35}
+.pk-cards span{position:absolute;bottom:4px;right:6px;background:rgba(0,0,0,.6);color:#fff;font-size:11px;border-radius:4px;padding:0 5px}
+.pk-th label{display:flex;gap:8px;align-items:flex-start;padding:7px 0;border-bottom:1px dashed #E4E0D6;font-size:14px;cursor:pointer}
+.pk-th label:last-child{border:0}.pk-th input{width:18px;height:18px;margin-top:3px;flex:0 0 18px}
+.pk-th .txt{white-space:pre-wrap;min-width:0}
+.pk-row{display:flex;gap:14px;flex-wrap:wrap;margin-top:6px;font-size:14px}
+.pk-row label,.pk-head{display:flex!important;align-items:center;gap:6px;margin:0!important;font-size:14px}.pk-row input{width:18px;height:18px}
+.pk-dis{opacity:.4}
 #pubmodal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:8;padding:16px}
 #pubmodal .box{background:#fff;border-radius:14px;padding:18px;max-width:420px;width:100%}
 .bulkbar{position:fixed;left:0;right:0;bottom:0;background:#1B2A4A;color:#fff;display:none;gap:8px;align-items:center;justify-content:center;padding:10px 12px;z-index:7;flex-wrap:wrap}
@@ -290,6 +306,11 @@ code{background:#F1EEE6;padding:1px 5px;border-radius:4px;font-size:13px}
 <div class="savebar" id="savebar"><span class="muted" style="align-self:center">바뀐 내용이 있습니다</span>
   <button class="btn ghost small" id="discard">되돌리기</button><button class="btn gold" id="save">저장</button></div>
 <div id="toast"></div>
+<div id="pickmodal"><div class="box">
+  <h3 style="margin:0 0 2px">골라서 올리기</h3><p class="muted" id="pk-title" style="margin:0 0 6px"></p>
+  <div id="pk-body"></div>
+  <p class="muted" style="font-size:12px">체크한 콘텐츠만 게시합니다. 이미 게시한 것을 다시 고르면 한 번 더 올라갑니다.</p>
+  <div class="bar" style="justify-content:flex-end"><button class="btn ghost small" id="pk-no">취소</button><button class="btn small gold" id="pk-go">선택한 것 올리기</button></div></div></div>
 <div id="pubmodal"><div class="box">
   <h3 style="margin:0 0 4px">발행할 채널 선택</h3><p class="muted" id="pub-title" style="margin:0 0 8px"></p>
   <div id="pub-list"></div>
@@ -528,6 +549,7 @@ code{background:#F1EEE6;padding:1px 5px;border-radius:4px;font-size:13px}
           ${pub ? `<div class="muted">${pub}</div>` : ""}
           ${chips}
           <div class="bar" style="margin-top:8px">
+            ${canPub ? `<button class="btn small gold" data-pick="${esc(d.id)}">🧩 골라서 올리기</button>` : ""}
             ${canPub ? `<button class="btn small gold" data-pub="${esc(d.id)}">${d.status === "발행됨" || d.status.startsWith("발행 일부") ? "여러 채널 한 번에" : "전체·여러 채널 발행"}</button>` : ""}
             ${d.preview ? `<a class="btn small ghost" href="${esc(d.preview)}" target="_blank" rel="noopener">미리보기</a>` : ""}
             ${d.video ? `<a class="btn small ghost" href="${esc(d.video)}" target="_blank" rel="noopener">영상 보기</a>` : ""}
@@ -536,6 +558,61 @@ code{background:#F1EEE6;padding:1px 5px;border-radius:4px;font-size:13px}
     } catch (e) { $("d-list").textContent = "불러오기 실패: " + e.message; }
   }
   $("d-refresh").onclick = loadDrafts;
+  // ── 골라서 올리기(콘텐츠 하나하나) ──
+  function pickContent(d, st) { return new Promise((res) => {
+    const pub = d.published || {}, conn = (sk) => !(st[sk] && !st[sk].ok);
+    const done = (k) => { const v = String(pub[k] || ""); return v && !/^(ERROR|건너뜀)/.test(v) ? " · ✓ 게시됨" : ""; };
+    const cards = d.cards || [], ths = d.threads || [];
+    const sec = (k, label, sk, inner) => `<div class="pk-sec ${conn(sk) ? "" : "pk-dis"}"><label class="pk-head"><input type="checkbox" data-pk="${k}" ${conn(sk) ? "" : "disabled"}>${label}<span class="muted" style="font-weight:400">${conn(sk) ? done(k) : " · 연결 안 됨"}</span></label>${inner || ""}</div>`;
+    const need = !cards.length && !ths.length;
+    $("pk-title").textContent = d.title;
+    $("pk-body").innerHTML =
+      (need ? `<div class="pk-sec">이 원고는 카드·스레드 목록 정보가 아직 없습니다. <button class="btn small ghost" id="pk-load">정보 불러오기</button><div class="muted" style="font-size:12px">1~2분 뒤 새로고침하면 카드·스레드를 하나씩 고를 수 있습니다. (채널 단위 선택은 지금도 가능)</div></div>` : "") +
+      sec("instagram_carousel", "인스타 카드뉴스", "instagram", cards.length ? `<div class="pk-cards">${cards.map((u, i) =>
+        `<label><input type="checkbox" data-card="${i + 1}" checked><img src="${esc(u)}" alt="카드 ${i + 1}" loading="lazy"><span>${i + 1}</span></label>`).join("")}</div>
+        <div class="muted" style="font-size:12px;margin-top:4px">2장 이상이면 캐러셀, 1장이면 단일 이미지 게시물</div>` : "") +
+      sec("instagram_reel", "인스타 릴스", "instagram") +
+      sec("threads", "스레드", "threads", ths.length ? `<div class="pk-th">${ths.map((t, i) =>
+        `<label><input type="checkbox" data-th="${i + 1}" checked><span class="txt"><b>${i + 1}.</b> ${esc(t)}</span></label>`).join("")}</div>
+        <div class="pk-row"><label><input type="radio" name="pk-mode" value="chain" checked> 이어서(첫 글 + 답글)</label><label><input type="radio" name="pk-mode" value="sep"> 각각 따로 게시</label></div>` : "") +
+      sec("blogger", "구글 블로거", "blogger") +
+      sec("youtube_shorts", "유튜브 쇼츠", "youtube_shorts", `<div class="muted" style="font-size:12px">감사 전에는 비공개로 잠깁니다</div>`);
+    const close = (v) => { $("pickmodal").style.display = "none"; res(v); };
+    $("pk-no").onclick = () => close(null);
+    const load = $("pk-load"); if (load) load.onclick = async () => { load.disabled = true;
+      try { await gh(`/actions/workflows/${WF}/dispatches`, { method: "POST", body: JSON.stringify({ ref: "main", inputs: { publish_id: "preview:" + d.id, topic: "", mode: "draft" } }) });
+        toast("불러오는 중입니다. 1~2분 뒤 원고 탭을 새로고침하세요.", 4000); } catch (e) { toast("실패: " + e.message, 4000); load.disabled = false; } };
+    $("pk-go").onclick = () => {
+      const out = [], names = [];
+      document.querySelectorAll("#pk-body [data-pk]:checked").forEach((c) => {
+        const k = c.dataset.pk, label = PUB_CH.find((x) => x[0] === k)[1];
+        if (k === "instagram_carousel" && cards.length) {
+          const n = [...document.querySelectorAll("#pk-body [data-card]:checked")].map((x) => x.dataset.card);
+          if (!n.length) return; out.push(n.length === cards.length ? k : `${k}@${n.join(".")}`); names.push(`${label}(${n.length === cards.length ? "전체" : n.join("·") + "번"})`);
+        } else if (k === "threads" && ths.length) {
+          const n = [...document.querySelectorAll("#pk-body [data-th]:checked")].map((x) => x.dataset.th);
+          if (!n.length) return; const sep = (document.querySelector("input[name=pk-mode]:checked") || {}).value === "sep";
+          out.push((n.length === ths.length ? k : `${k}@${n.join(".")}`) + (sep ? "~sep" : ""));
+          names.push(`${label}(${n.length === ths.length ? "전체" : n.join("·") + "번"}, ${sep ? "각각 따로" : "이어서"})`);
+        } else { out.push(k); names.push(label); }
+      });
+      if (!out.length) { toast("올릴 콘텐츠를 하나 이상 고르세요"); return; }
+      close({ channels: out.join(","), names });
+    };
+    // 카드·스레드 하나라도 고르면 해당 채널 자동 체크
+    $("pk-body").onchange = (e) => { const t = e.target;
+      if (t.dataset.card) { const h = document.querySelector('#pk-body [data-pk="instagram_carousel"]'); if (h && !h.disabled) h.checked = !!document.querySelector("#pk-body [data-card]:checked"); }
+      if (t.dataset.th || t.name === "pk-mode") { const h = document.querySelector('#pk-body [data-pk="threads"]'); if (h && !h.disabled) h.checked = !!document.querySelector("#pk-body [data-th]:checked"); } };
+    $("pickmodal").style.display = "flex"; }); }
+  $("d-list").addEventListener("click", async (e) => { const b = e.target.closest("[data-pick]"); if (!b) return;
+    const d = DRAFTS.find((x) => x.id === b.dataset.pick); if (!d) return;
+    const r = await pickContent(d, await chStatus()); if (!r) return;
+    if (!(await ask(`다음을 게시합니다.\n${r.names.map((n) => "· " + n).join("\n")}\n\n「${d.title}」\n대외에 공개되는 글입니다. 진행할까요?`))) return;
+    b.disabled = true;
+    try { await gh(`/actions/workflows/${WF}/dispatches`, { method: "POST", body: JSON.stringify({ ref: "main", inputs: { publish_id: d.id, channels: r.channels, topic: "", mode: "auto" } }) });
+      toast("게시를 시작했습니다. 2~4분 뒤 ✓ 표시가 붙습니다.", 4000); setTimeout(loadDrafts, 150000); }
+    catch (err) { toast("발행 실패: " + err.message, 5000); } finally { b.disabled = false; } });
+
   // ── 선택 일괄 발행 ──
   const SEL = new Set();
   function bulkUpdate() {
