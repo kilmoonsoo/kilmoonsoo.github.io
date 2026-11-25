@@ -260,6 +260,7 @@ code{background:#F1EEE6;padding:1px 5px;border-radius:4px;font-size:13px}
       <label style="margin-top:12px">자동 발행할 채널 <span class="muted">(체크 안 한 채널은 '원고' 탭에서 직접 발행)</span></label>
       <div id="auto-ch"></div>
     </div>
+    <div class="toggle" style="margin-top:10px"><span>인스타 카드뉴스를 올릴 때 <b>스레드도 함께</b> 올리기</span><input type="checkbox" id="s-link-th"></div>
   </div>
   <div class="card">
     <h2>품질·비용</h2>
@@ -407,7 +408,8 @@ code{background:#F1EEE6;padding:1px 5px;border-radius:4px;font-size:13px}
     $("s-mode").value = S.publish_mode || "auto";
     const AUTO = S.auto_channels && S.auto_channels.length ? S.auto_channels : PUB_CH.map((c) => c[0]);
     $("auto-ch").innerHTML = PUB_CH.map(([k, label]) => `<div class="toggle"><span>${label}</span><input type="checkbox" data-auto="${k}" ${AUTO.includes(k) ? "checked" : ""}></div>`).join("");
-    $("auto-box").style.display = $("s-mode").value === "auto" ? "" : "none"; $("s-model").value = (S.llm || {}).model || "claude-sonnet-5-5";
+    $("auto-box").style.display = $("s-mode").value === "auto" ? "" : "none";
+    $("s-link-th").checked = S.link_threads !== false; $("s-model").value = (S.llm || {}).model || "claude-sonnet-5-5";
     $("s-imgs").value = String((S.images || {}).max_per_post || 5); $("s-img-on").checked = !!(S.images || {}).enabled;
     $("s-bmin").value = (S.blog || {}).min_chars || 2300; $("s-bmax").value = (S.blog || {}).max_chars || 2800;
     $("s-voice").value = (S.video || {}).tts_voice || "ko-KR-SunHiNeural"; $("s-rate").value = (S.video || {}).tts_rate || "+0%";
@@ -432,7 +434,8 @@ code{background:#F1EEE6;padding:1px 5px;border-radius:4px;font-size:13px}
       office: { ...S.office, name: $("o-name").value.trim(), address: $("o-address").value.trim(), phone: $("o-phone").value.trim(),
         registration_no: $("o-reg").value.trim(), broker_title: $("o-title").value.trim(), broker_name: $("o-broker").value.trim() },
       publish_mode: $("s-mode").value, channels,
-      auto_channels: [...document.querySelectorAll("[data-auto]")].filter((c) => c.checked).map((c) => c.dataset.auto), schedule, series, principles,
+      auto_channels: [...document.querySelectorAll("[data-auto]")].filter((c) => c.checked).map((c) => c.dataset.auto),
+      link_threads: $("s-link-th").checked, schedule, series, principles,
       images: { ...S.images, enabled: $("s-img-on").checked, max_per_post: +$("s-imgs").value },
       llm: { ...S.llm, model: $("s-model").value },
       blog: { min_chars: +$("s-bmin").value || 2300, max_chars: +$("s-bmax").value || 2800 },
@@ -558,6 +561,16 @@ code{background:#F1EEE6;padding:1px 5px;border-radius:4px;font-size:13px}
     } catch (e) { $("d-list").textContent = "불러오기 실패: " + e.message; }
   }
   $("d-refresh").onclick = loadDrafts;
+  // 카드뉴스 ↔ 스레드 함께 올리기 (설정 '스레드도 함께')
+  const LINK_TH = () => !S || S.link_threads !== false;
+  const thPosted = (d) => { const v = String((d.published || {}).threads || ""); return v && !/^(ERROR|건너뜀)/.test(v); };
+  function linkCheck(root, src) {   // 카드뉴스를 체크하면 스레드도 체크
+    if (!LINK_TH()) return;
+    const car = root.querySelector('[data-pk="instagram_carousel"],input[value="instagram_carousel"]');
+    const th = root.querySelector('[data-pk="threads"],input[value="threads"]');
+    if (car && th && !th.disabled && src === car && car.checked) th.checked = true;
+  }
+
   // ── 골라서 올리기(콘텐츠 하나하나) ──
   function pickContent(d, st) { return new Promise((res) => {
     const pub = d.published || {}, conn = (sk) => !(st[sk] && !st[sk].ok);
@@ -601,7 +614,8 @@ code{background:#F1EEE6;padding:1px 5px;border-radius:4px;font-size:13px}
     };
     // 카드·스레드 하나라도 고르면 해당 채널 자동 체크
     $("pk-body").onchange = (e) => { const t = e.target;
-      if (t.dataset.card) { const h = document.querySelector('#pk-body [data-pk="instagram_carousel"]'); if (h && !h.disabled) h.checked = !!document.querySelector("#pk-body [data-card]:checked"); }
+      if (t.dataset.pk === "instagram_carousel" && !thPosted(d)) linkCheck($("pk-body"), t);
+      if (t.dataset.card) { const h = document.querySelector('#pk-body [data-pk="instagram_carousel"]'); if (h && !h.disabled) { h.checked = !!document.querySelector("#pk-body [data-card]:checked"); if (!thPosted(d)) linkCheck($("pk-body"), h); } }
       if (t.dataset.th || t.name === "pk-mode") { const h = document.querySelector('#pk-body [data-pk="threads"]'); if (h && !h.disabled) h.checked = !!document.querySelector("#pk-body [data-th]:checked"); } };
     $("pickmodal").style.display = "flex"; }); }
   $("d-list").addEventListener("click", async (e) => { const b = e.target.closest("[data-pick]"); if (!b) return;
@@ -648,17 +662,24 @@ code{background:#F1EEE6;padding:1px 5px;border-radius:4px;font-size:13px}
       const note = !conn ? "연결 안 됨" : done ? "게시됨" : (pub[k] || "").startsWith("ERROR") ? "지난번 실패" : "";
       return `<label class="pubch"><input type="checkbox" value="${k}" ${conn && !done ? "checked" : ""} ${conn ? "" : "disabled"}>${label}<span class="muted">${note}</span></label>`; }).join("");
     const close = (v) => { $("pubmodal").style.display = "none"; res(v); };
+    $("pub-list").onchange = (e) => { if (e.target.value === "instagram_carousel") linkCheck($("pub-list"), e.target); };
     $("pub-no").onclick = () => close(null);
     $("pub-all").onclick = () => close([...document.querySelectorAll("#pub-list input:not(:disabled)")].map((i) => i.value));
     $("pub-sel").onclick = () => { const v = [...document.querySelectorAll("#pub-list input:checked")].map((i) => i.value);
       if (!v.length) { toast("채널을 하나 이상 고르세요"); return; } close(v); };
     $("pubmodal").style.display = "flex"; }); }
   $("d-list").addEventListener("click", async (e) => { const c = e.target.closest("[data-one]"); if (!c) return;
-    const d = DRAFTS.find((x) => x.id === c.dataset.one) || { title: "" }; const label = PUB_CH.find((x) => x[0] === c.dataset.ch)[1];
+    const d = DRAFTS.find((x) => x.id === c.dataset.one) || { title: "" }; let label = PUB_CH.find((x) => x[0] === c.dataset.ch)[1];
     const again = c.classList.contains("done");
-    if (!(await ask(`${label}에만 게시합니다.\n「${d.title}」${again ? "\n이미 게시한 채널이라 같은 글이 한 번 더 올라갑니다." : ""}\n대외에 공개되는 글입니다. 진행할까요?`))) return;
+    let chs = c.dataset.ch, note = "";
+    if (chs === "instagram_carousel" && LINK_TH()) {
+      const thBtn = document.querySelector(`[data-one="${CSS.escape(d.id || c.dataset.one)}"][data-ch="threads"]`);
+      if (thPosted(d)) note = "\n(스레드는 이미 게시돼 있어 함께 올리지 않습니다)";
+      else if (thBtn && !thBtn.disabled) { chs += ",threads"; label += " + 스레드"; }
+    }
+    if (!(await ask(`${label}에 게시합니다.\n「${d.title}」${again ? "\n이미 게시한 채널이라 같은 글이 한 번 더 올라갑니다." : ""}${note}\n대외에 공개되는 글입니다. 진행할까요?`))) return;
     c.disabled = true;
-    try { await gh(`/actions/workflows/${WF}/dispatches`, { method: "POST", body: JSON.stringify({ ref: "main", inputs: { publish_id: c.dataset.one, channels: c.dataset.ch, topic: "", mode: "auto" } }) });
+    try { await gh(`/actions/workflows/${WF}/dispatches`, { method: "POST", body: JSON.stringify({ ref: "main", inputs: { publish_id: c.dataset.one, channels: chs, topic: "", mode: "auto" } }) });
       toast(`${label} 발행을 시작했습니다. 2~4분 뒤 ✓ 표시가 붙습니다.`, 4000); setTimeout(loadDrafts, 150000); }
     catch (err) { toast("발행 실패: " + err.message, 5000); c.disabled = false; } });
   $("d-list").addEventListener("click", async (e) => { const b = e.target.closest("[data-pub]"); if (!b) return;
