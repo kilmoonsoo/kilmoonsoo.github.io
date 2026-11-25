@@ -57,6 +57,10 @@ textarea{min-height:84px;resize:vertical}
 #toast{position:fixed;left:50%;bottom:80px;transform:translateX(-50%);background:#1B1B1B;color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;display:none;z-index:9;max-width:90%}
 #pubmodal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:8;padding:16px}
 #pubmodal .box{background:#fff;border-radius:14px;padding:18px;max-width:420px;width:100%}
+.bulkbar{position:fixed;left:0;right:0;bottom:0;background:#1B2A4A;color:#fff;display:none;gap:8px;align-items:center;justify-content:center;padding:10px 12px;z-index:7;flex-wrap:wrap}
+.bulkbar.on{display:flex}.bulkbar .btn.ghost{background:transparent;color:#fff;border-color:#fff}
+.selall{display:flex;gap:6px;align-items:center;font-size:14px;cursor:pointer}.selall input,.dsel{width:20px;height:20px;accent-color:#C9A227}
+.dsel-wrap{display:flex;align-items:flex-start;gap:8px}
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 .chip{border:1px solid #1B2A4A;background:#fff;color:#1B2A4A;border-radius:99px;padding:5px 11px;font:inherit;font-size:13px;cursor:pointer;text-decoration:none}
 .chip.done{background:#E6F4EA;border-color:#2E7D4F;color:#2E7D4F}.chip:disabled{opacity:.35;cursor:not-allowed}
@@ -134,8 +138,12 @@ code{background:#F1EEE6;padding:1px 5px;border-radius:4px;font-size:13px}
   <div class="card">
     <h2>만들어진 원고</h2>
     <p class="d">'미리보기'로 내용을 확인한 뒤, 채널 버튼을 누르면 <b>그 채널에만</b> 게시합니다(✓ = 게시됨, 흐린 버튼 = 연결 안 됨). 네이버 블로그는 '네이버 블로그 원고'를 열어 전체 복사 → 스마트에디터에 붙여넣으세요.</p>
+    <div class="bar" style="margin:0 0 6px"><label class="selall"><input type="checkbox" id="d-all"> 발행 가능한 원고 전체 선택</label></div>
     <div id="d-list" class="muted">연결 후 표시됩니다.</div>
     <div class="bar"><button class="btn small ghost" id="d-refresh">새로고침</button></div>
+  </div>
+  <div class="bulkbar" id="bulkbar"><span id="bulk-n">0개 선택</span>
+    <button class="btn small ghost" id="bulk-clear">선택 해제</button><button class="btn small gold" id="bulk-pub">선택한 원고 일괄 발행</button>
   </div>
 </section>
 
@@ -228,10 +236,14 @@ code{background:#F1EEE6;padding:1px 5px;border-radius:4px;font-size:13px}
   <div class="card">
     <h2>발행 방식</h2>
     <select id="s-mode">
-      <option value="auto">자동 발행 (검사 통과 시 바로 게시)</option>
-      <option value="approve">승인 후 발행 (메일 확인 후 직접 실행)</option>
+      <option value="auto">자동 발행 (아래에서 고른 채널만 바로 게시)</option>
+      <option value="approve">승인 후 발행 (확인 후 '원고' 탭에서 직접)</option>
       <option value="draft">초안만</option>
     </select>
+    <div id="auto-box">
+      <label style="margin-top:12px">자동 발행할 채널 <span class="muted">(체크 안 한 채널은 '원고' 탭에서 직접 발행)</span></label>
+      <div id="auto-ch"></div>
+    </div>
   </div>
   <div class="card">
     <h2>품질·비용</h2>
@@ -333,7 +345,9 @@ code{background:#F1EEE6;padding:1px 5px;border-radius:4px;font-size:13px}
 
   const markDirty = () => { dirty = true; $("savebar").classList.add("on"); };
   document.querySelector("main").addEventListener("input", (e) => {
-    if (e.target.closest("#v-home,#v-listings,#v-connect")) return; markDirty(); });
+    if (e.target.closest("#v-home,#v-listings,#v-connect,#v-drafts")) return;
+    if (e.target.id === "s-mode") $("auto-box").style.display = e.target.value === "auto" ? "" : "none";
+    markDirty(); });
 
   // ── 설정 그리기 ────────────────────────────
   function seriesNames() { return Object.keys(S.series || {}); }
@@ -369,7 +383,10 @@ code{background:#F1EEE6;padding:1px 5px;border-radius:4px;font-size:13px}
     $("o-name").value = o.name || ""; $("o-address").value = o.address || ""; $("o-phone").value = o.phone || "";
     $("o-reg").value = o.registration_no || ""; $("o-title").value = o.broker_title || ""; $("o-broker").value = o.broker_name || "";
     $("channels").innerHTML = CH.map(([k, ko]) => `<div class="toggle"><span>${ko}</span><input type="checkbox" data-ch="${k}" ${S.channels[k] ? "checked" : ""}></div>`).join("");
-    $("s-mode").value = S.publish_mode || "auto"; $("s-model").value = (S.llm || {}).model || "claude-sonnet-5-5";
+    $("s-mode").value = S.publish_mode || "auto";
+    const AUTO = S.auto_channels && S.auto_channels.length ? S.auto_channels : PUB_CH.map((c) => c[0]);
+    $("auto-ch").innerHTML = PUB_CH.map(([k, label]) => `<div class="toggle"><span>${label}</span><input type="checkbox" data-auto="${k}" ${AUTO.includes(k) ? "checked" : ""}></div>`).join("");
+    $("auto-box").style.display = $("s-mode").value === "auto" ? "" : "none"; $("s-model").value = (S.llm || {}).model || "claude-sonnet-5-5";
     $("s-imgs").value = String((S.images || {}).max_per_post || 5); $("s-img-on").checked = !!(S.images || {}).enabled;
     $("s-bmin").value = (S.blog || {}).min_chars || 2300; $("s-bmax").value = (S.blog || {}).max_chars || 2800;
     $("s-voice").value = (S.video || {}).tts_voice || "ko-KR-SunHiNeural"; $("s-rate").value = (S.video || {}).tts_rate || "+0%";
@@ -393,7 +410,8 @@ code{background:#F1EEE6;padding:1px 5px;border-radius:4px;font-size:13px}
       brand: { ...S.brand, audience: $("b-audience").value.trim(), tone: $("b-tone").value.trim(), author: $("b-author").value.trim() },
       office: { ...S.office, name: $("o-name").value.trim(), address: $("o-address").value.trim(), phone: $("o-phone").value.trim(),
         registration_no: $("o-reg").value.trim(), broker_title: $("o-title").value.trim(), broker_name: $("o-broker").value.trim() },
-      publish_mode: $("s-mode").value, channels, schedule, series, principles,
+      publish_mode: $("s-mode").value, channels,
+      auto_channels: [...document.querySelectorAll("[data-auto]")].filter((c) => c.checked).map((c) => c.dataset.auto), schedule, series, principles,
       images: { ...S.images, enabled: $("s-img-on").checked, max_per_post: +$("s-imgs").value },
       llm: { ...S.llm, model: $("s-model").value },
       blog: { min_chars: +$("s-bmin").value || 2300, max_chars: +$("s-bmax").value || 2800 },
@@ -504,7 +522,7 @@ code{background:#F1EEE6;padding:1px 5px;border-radius:4px;font-size:13px}
             return `<button class="chip${done ? " done" : ""}" data-one="${esc(d.id)}" data-ch="${k}" ${off ? "disabled title='연결 안 됨'" : ""}>${done ? "✓ " : ""}${label}</button>`; }).join("") +
           `</div>` : "";
         return `<div class="draft">${d.cover ? `<img src="${esc(d.cover)}" alt="" loading="lazy">` : "<div></div>"}
-          <div><div><span class="tag s-${esc(st)}">${esc(d.status)}</span>${d.set === "social" ? '<span class="tag s-social">🎬 릴스·스레드</span>' : ""}<span class="muted">${esc(d.created)} · ${esc(d.series)}</span></div>
+          <div><div class="dsel-wrap">${canPub ? `<input type="checkbox" class="dsel" value="${esc(d.id)}" ${SEL.has(d.id) ? "checked" : ""} aria-label="선택">` : ""}<div><span class="tag s-${esc(st)}">${esc(d.status)}</span>${d.set === "social" ? '<span class="tag s-social">🎬 릴스·스레드</span>' : ""}<span class="muted">${esc(d.created)} · ${esc(d.series)}</span></div></div>
           <h3>${esc(d.title)}</h3>
           ${(d.issues || []).length ? `<div class="muted" style="color:#B3261E">${d.issues.map(esc).join("<br>")}</div>` : ""}
           ${pub ? `<div class="muted">${pub}</div>` : ""}
@@ -514,9 +532,33 @@ code{background:#F1EEE6;padding:1px 5px;border-radius:4px;font-size:13px}
             ${d.preview ? `<a class="btn small ghost" href="${esc(d.preview)}" target="_blank" rel="noopener">미리보기</a>` : ""}
             ${d.video ? `<a class="btn small ghost" href="${esc(d.video)}" target="_blank" rel="noopener">영상 보기</a>` : ""}
             ${d.storable && d.set !== "social" ? `<button class="btn small ghost" data-social="${esc(d.id)}">🎬 릴스·스레드로 재가공</button>` : ""}</div></div></div>`; }).join("");
+      bulkUpdate();
     } catch (e) { $("d-list").textContent = "불러오기 실패: " + e.message; }
   }
   $("d-refresh").onclick = loadDrafts;
+  // ── 선택 일괄 발행 ──
+  const SEL = new Set();
+  function bulkUpdate() {
+    const ids = new Set(DRAFTS.map((d) => d.id)); [...SEL].forEach((id) => ids.has(id) || SEL.delete(id));
+    $("bulk-n").textContent = `${SEL.size}개 선택`; $("bulkbar").classList.toggle("on", SEL.size > 0);
+    const boxes = [...document.querySelectorAll(".dsel")]; $("d-all").checked = boxes.length > 0 && boxes.every((b) => b.checked);
+  }
+  document.addEventListener("change", (e) => {
+    if (e.target.matches(".dsel")) { e.target.checked ? SEL.add(e.target.value) : SEL.delete(e.target.value); bulkUpdate(); }
+    if (e.target.id === "d-all") { document.querySelectorAll(".dsel").forEach((b) => { b.checked = e.target.checked; b.checked ? SEL.add(b.value) : SEL.delete(b.value); }); bulkUpdate(); }
+  });
+  $("bulk-clear").onclick = () => { SEL.clear(); document.querySelectorAll(".dsel").forEach((b) => (b.checked = false)); bulkUpdate(); };
+  $("bulk-pub").onclick = async () => {
+    const ids = [...SEL]; if (!ids.length) return;
+    const chosen = await pickChannels({ title: `선택한 원고 ${ids.length}개`, published: {} }, await chStatus()); if (!chosen || !chosen.length) return;
+    const names = chosen.map((k) => PUB_CH.find((c) => c[0] === k)[1]).join(", ");
+    const titles = ids.map((id) => "· " + ((DRAFTS.find((d) => d.id === id) || {}).title || id)).join("\n");
+    if (!(await ask(`원고 ${ids.length}개를 ${names}에 게시합니다.\n${titles}\n\n이미 게시한 채널에 다시 올리면 같은 글이 한 번 더 올라갑니다. 대외 공개되는 글입니다. 진행할까요?`))) return;
+    $("bulk-pub").disabled = true;
+    try { await gh(`/actions/workflows/${WF}/dispatches`, { method: "POST", body: JSON.stringify({ ref: "main", inputs: { publish_id: ids.join(","), channels: chosen.join(","), topic: "", mode: "auto" } }) });
+      toast(`원고 ${ids.length}개 일괄 발행을 시작했습니다. 원고당 2~4분, 끝나면 ✓ 표시가 붙습니다.`, 5000);
+      SEL.clear(); bulkUpdate(); setTimeout(loadDrafts, 180000); }
+    catch (err) { toast("발행 실패: " + err.message, 5000); } finally { $("bulk-pub").disabled = false; } };
   const PUB_CH = [["instagram_carousel", "인스타 카드뉴스", "instagram"], ["instagram_reel", "인스타 릴스", "instagram"],
     ["threads", "스레드", "threads"], ["youtube_shorts", "유튜브 쇼츠", "youtube_shorts"], ["blogger", "구글 블로거", "blogger"]];
   let DRAFTS = [];
