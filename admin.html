@@ -284,6 +284,11 @@ code{background:#F1EEE6;padding:1px 5px;border-radius:4px;font-size:13px}
       <div id="auto-ch"></div>
     </div>
     <div class="toggle" style="margin-top:10px"><span>인스타 카드뉴스를 올릴 때 <b>스레드도 함께</b> 올리기</span><input type="checkbox" id="s-link-th"></div>
+    <label style="margin-top:12px">알림(메일·슬랙)</label>
+    <select id="s-notify"><option value="issues">문제 있을 때만 (보류·게시 실패·실행 오류)</option><option value="all">매번 (원고 생성·발행마다)</option></select>
+    <label style="margin-top:12px">유튜브 쇼츠 공개 범위</label>
+    <select id="s-ytp"><option value="public">공개</option><option value="unlisted">일부 공개(링크가 있는 사람만)</option><option value="private">비공개</option></select>
+    <p class="d" style="margin-top:4px">유튜브 API 감사 통과 전에는 어떤 값을 골라도 비공개로 잠깁니다.</p>
   </div>
   <div class="card">
     <h2>품질·비용</h2>
@@ -445,7 +450,8 @@ code{background:#F1EEE6;padding:1px 5px;border-radius:4px;font-size:13px}
     const AUTO = S.auto_channels && S.auto_channels.length ? S.auto_channels : PUB_CH.map((c) => c[0]);
     $("auto-ch").innerHTML = PUB_CH.map(([k, label]) => `<div class="toggle"><span>${label}</span><input type="checkbox" data-auto="${k}" ${AUTO.includes(k) ? "checked" : ""}></div>`).join("");
     $("auto-box").style.display = $("s-mode").value === "auto" ? "" : "none";
-    $("s-link-th").checked = S.link_threads !== false; $("s-model").value = (S.llm || {}).model || "claude-sonnet-5-5";
+    $("s-link-th").checked = S.link_threads !== false;
+    $("s-notify").value = S.notify || "issues"; $("s-ytp").value = (S.youtube || {}).privacy || "public"; $("s-model").value = (S.llm || {}).model || "claude-sonnet-5-5";
     $("s-imgs").value = String((S.images || {}).max_per_post || 5); $("s-img-on").checked = !!(S.images || {}).enabled;
     $("s-bmin").value = (S.blog || {}).min_chars || 2300; $("s-bmax").value = (S.blog || {}).max_chars || 2800;
     $("s-voice").value = (S.video || {}).tts_voice || "ko-KR-SunHiNeural"; $("s-rate").value = (S.video || {}).tts_rate || "+0%";
@@ -471,7 +477,8 @@ code{background:#F1EEE6;padding:1px 5px;border-radius:4px;font-size:13px}
         registration_no: $("o-reg").value.trim(), broker_title: $("o-title").value.trim(), broker_name: $("o-broker").value.trim() },
       publish_mode: $("s-mode").value, channels,
       auto_channels: [...document.querySelectorAll("[data-auto]")].filter((c) => c.checked).map((c) => c.dataset.auto),
-      link_threads: $("s-link-th").checked, schedule, series, principles,
+      link_threads: $("s-link-th").checked, notify: $("s-notify").value,
+      youtube: { ...(S.youtube || {}), privacy: $("s-ytp").value }, schedule, series, principles,
       images: { ...S.images, enabled: $("s-img-on").checked, max_per_post: +$("s-imgs").value },
       llm: { ...S.llm, model: $("s-model").value },
       blog: { min_chars: +$("s-bmin").value || 2300, max_chars: +$("s-bmax").value || 2800 },
